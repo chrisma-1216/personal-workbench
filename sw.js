@@ -1,6 +1,6 @@
 // 个人工作台 Service Worker
 // 职责：离线缓存壳 + 接收 Web Push 并展示（iOS 忽略 actions，正文必须自解释）+ 点击打开。
-const CACHE = 'pwt-v1';
+const CACHE = 'pwt-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -27,22 +27,21 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// 网络优先：在线时永远拉最新代码，避免「推上去了但手机还是旧版」的缓存陷阱。
+// 同域 GET 成功后才写回缓存，作为离线兜底。
 self.addEventListener('fetch', (e) => {
   const { request } = e;
   if (request.method !== 'GET') return;
   e.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((res) => {
-          if (new URL(request.url).origin === location.origin && res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy));
-          }
-          return res;
-        })
-        .catch(() => cached || Response.error());
-    })
+    fetch(request)
+      .then((res) => {
+        if (new URL(request.url).origin === location.origin && res.ok && res.type === 'basic') {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(request).then((c) => c || Response.error()))
   );
 });
 
