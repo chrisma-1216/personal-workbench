@@ -102,6 +102,49 @@ function renderTab(tab) {
   else if (tab === 'settings') renderSettings();
 }
 
+// ============================ 模态 / 轻提示（替代 prompt/alert，iOS 主屏 PWA 下 prompt 被屏蔽） ============================
+function toast(msg, isErr) {
+  let t = $('#toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => (t.className = 'toast'), 2200);
+}
+
+// fields: [{ type:'score'|'text', label }]；返回 { score, comment } 或 null（取消）
+function openModal({ title, withScore, scoreLabel = '评分 1–5（可跳过）', textLabel = '评论（可选）', textPlaceholder = '' }) {
+  return new Promise((resolve) => {
+    const mask = document.createElement('div');
+    mask.className = 'modal-mask';
+    mask.innerHTML = `
+      <div class="modal-card">
+        <h3>${title}</h3>
+        ${withScore ? `<div class="score-row" id="mScore">
+          ${[1,2,3,4,5].map((n) => `<button data-s="${n}">${n}</button>`).join('')}
+        </div><div class="muted" style="margin:-6px 0 8px">${scoreLabel}</div>` : ''}
+        <label style="color:var(--muted);font-size:14px">${textLabel}</label>
+        <textarea id="mText" placeholder="${textPlaceholder}"></textarea>
+        <div class="modal-actions">
+          <button class="cancel" id="mCancel">取消</button>
+          <button id="mOk">确定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(mask);
+    let picked = null;
+    const close = (val) => { mask.remove(); resolve(val); };
+    if (withScore) {
+      mask.querySelectorAll('#mScore button').forEach((b) => (b.onclick = () => {
+        mask.querySelectorAll('#mScore button').forEach((x) => x.classList.remove('sel'));
+        b.classList.add('sel'); picked = parseInt(b.dataset.s, 10);
+      }));
+    }
+    mask.querySelector('#mCancel').onclick = () => close(null);
+    mask.querySelector('#mOk').onclick = () => close({ score: picked, comment: mask.querySelector('#mText').value.trim() || null });
+    mask.onclick = (e) => { if (e.target === mask) close(null); };
+  });
+}
+
 // ============================ 今日 ============================
 async function renderToday() {
   const day = todayKey();
@@ -150,34 +193,43 @@ async function renderToday() {
 }
 
 async function markDone(id) {
-  const s = prompt('评分 1–5（可留空只标记完成）');
-  const patch = { status: 'done' };
-  if (s !== null) {
-    const score = s.trim() === '' ? null : parseInt(s, 10);
-    if (score !== null && (isNaN(score) || score < 1 || score > 5)) { alert('评分需 1–5'); return; }
-    patch.score = score;
-  }
-  const c = prompt('评论（可选，复盘用）') || '';
-  patch.comment = c || null;
-  const { error } = await api.updateTimeBlock(id, patch);
-  if (error) { alert('失败：' + error.message); return; }
+  const r = await openModal({
+    title: '标记完成',
+    withScore: true,
+    scoreLabel: '打分（可跳过，只标记完成）',
+    textLabel: '评论（可选，复盘用）',
+    textPlaceholder: '这阵子实际怎么过的…',
+  });
+  if (!r) return;
+  const { error } = await api.updateTimeBlock(id, { status: 'done', score: r.score, comment: r.comment });
+  if (error) { toast('失败：' + error.message, true); return; }
   renderToday();
 }
 
 async function markMissed(id) {
-  const c = prompt('未完成原因（可选，复盘用，这是最值钱的定性输入）') || '';
-  const { error } = await api.updateTimeBlock(id, { status: 'missed', comment: c || null });
-  if (error) { alert('失败：' + error.message); return; }
+  const r = await openModal({
+    title: '标记未完成',
+    withScore: false,
+    textLabel: '原因（可选，这是最值钱的定性输入）',
+    textPlaceholder: '被打断 / 临时有事 / 没动力…',
+  });
+  if (!r) return;
+  const { error } = await api.updateTimeBlock(id, { status: 'missed', comment: r.comment });
+  if (error) { toast('失败：' + error.message, true); return; }
   renderToday();
 }
 
 async function scoreBlock(id) {
-  const s = prompt('评分 1–5（可留空只写评论）');
-  if (s === null) return;
-  const score = s.trim() === '' ? null : parseInt(s, 10);
-  if (score !== null && (isNaN(score) || score < 1 || score > 5)) { alert('评分需 1–5'); return; }
-  const c = prompt('评论（可选，AI 复盘用）') || '';
-  await api.updateTimeBlock(id, { score, comment: c || null });
+  const r = await openModal({
+    title: '评分 / 评论',
+    withScore: true,
+    scoreLabel: '打分（可跳过，只写评论）',
+    textLabel: '评论（可选，AI 复盘用）',
+    textPlaceholder: '写点复盘想留的话…',
+  });
+  if (!r) return;
+  const { error } = await api.updateTimeBlock(id, { score: r.score, comment: r.comment });
+  if (error) { toast('失败：' + error.message, true); return; }
   renderToday();
 }
 
@@ -214,7 +266,7 @@ function renderRecForm() {
     $('#tbRemind').onchange = (e) => ($('#tbRemindAtWrap').hidden = !e.target.checked);
     $('#tbSave').onclick = async () => {
       const title = $('#tbTitle').value.trim();
-      if (!title || !$('#tbStart').value || !$('#tbEnd').value) { alert('请填起止时间和内容'); return; }
+      if (!title || !$('#tbStart').value || !$('#tbEnd').value) { toast('请填起止时间和内容', true); return; }
       const remind_enabled = $('#tbRemind').checked;
       const { error } = await api.createTimeBlock({
         start_at: localInputToISO($('#tbStart').value),
@@ -223,7 +275,7 @@ function renderRecForm() {
         remind_enabled,
         remind_at: remind_enabled ? localInputToISO($('#tbRemindAt').value) : null,
       });
-      if (error) alert('保存失败：' + error.message); else { alert('已保存'); renderRecord(); }
+      if (error) toast('保存失败：' + error.message, true); else { toast('已保存'); renderRecord(); }
     };
   } else if (recordTab === 'finance') {
     const cats = [['food','餐饮'],['transport','交通'],['shopping','购物'],['housing','居住'],['medical','医疗'],
@@ -242,11 +294,11 @@ function renderRecForm() {
     box.querySelectorAll('[data-dir]').forEach((b) => (b.onclick = () => { finDir = b.dataset.dir; renderRecForm(); }));
     $('#txSave').onclick = async () => {
       const amount = parseFloat($('#txAmount').value);
-      if (isNaN(amount) || amount <= 0) { alert('请输入正确金额'); return; }
+      if (isNaN(amount) || amount <= 0) { toast('请输入正确金额', true); return; }
       const { error } = await api.createTxn({
         amount, direction: finDir, category_key: $('#txCat').value, note: $('#txNote').value.trim(),
       });
-      if (error) alert('保存失败：' + error.message); else { alert('已记一笔'); renderRecord(); }
+      if (error) toast('保存失败：' + error.message, true); else { toast('已记一笔'); renderRecord(); }
     };
   } else if (recordTab === 'weight') {
     box.innerHTML = `
@@ -257,9 +309,9 @@ function renderRecForm() {
       </div>`;
     $('#wSave').onclick = async () => {
       const value = parseFloat($('#wVal').value);
-      if (isNaN(value) || value <= 0) { alert('请输入正确体重'); return; }
+      if (isNaN(value) || value <= 0) { toast('请输入正确体重', true); return; }
       const { error } = await api.createWeight(value, $('#wNote').value.trim());
-      if (error) alert('保存失败：' + error.message); else { alert('已记录'); renderRecord(); }
+      if (error) toast('保存失败：' + error.message, true); else { toast('已记录'); renderRecord(); }
     };
   } else if (recordTab === 'exercise') {
     box.innerHTML = `
@@ -274,12 +326,12 @@ function renderRecForm() {
     $('#exInt').oninput = (e) => ($('#exIv').textContent = e.target.value);
     $('#exSave').onclick = async () => {
       const duration_min = parseInt($('#exDur').value, 10);
-      if (isNaN(duration_min) || duration_min <= 0) { alert('请输入正确时长'); return; }
+      if (isNaN(duration_min) || duration_min <= 0) { toast('请输入正确时长', true); return; }
       const { error } = await api.createExercise({
         type: $('#exType').value.trim() || '其他',
         duration_min, intensity: parseInt($('#exInt').value, 10), note: $('#exNote').value.trim(),
       });
-      if (error) alert('保存失败：' + error.message); else { alert('已记录'); renderRecord(); }
+      if (error) toast('保存失败：' + error.message, true); else { toast('已记录'); renderRecord(); }
     };
   } else if (recordTab === 'diet') {
     box.innerHTML = `
@@ -304,7 +356,7 @@ function renderRecForm() {
     $('#mSave').onclick = async () => {
       const fullness = parseInt($('#mFull').value, 10);
       const { error } = await api.createMeal({ slot: $('#mSlot').value, fullness, note: $('#mNote').value.trim() });
-      if (error) alert('保存失败：' + error.message); else { alert('已记录'); renderRecord(); }
+      if (error) toast('保存失败：' + error.message, true); else { toast('已记录'); renderRecord(); }
     };
   }
 }
