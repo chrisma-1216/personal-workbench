@@ -46,6 +46,7 @@ function stateText(status) {
 
 // ============================ 启动 ============================
 async function boot() {
+  applyAppearance();
   const s = await getSession();
   if (s) { session = s; showApp(); } else renderLogin();
   onAuthChange((sess) => {
@@ -143,6 +144,29 @@ function openModal({ title, withScore, scoreLabel = '评分 1–5（可跳过）
     mask.querySelector('#mOk').onclick = () => close({ score: picked, comment: mask.querySelector('#mText').value.trim() || null });
     mask.onclick = (e) => { if (e.target === mask) close(null); };
   });
+}
+
+// ============================ 外观（深浅色 + 背景，存 localStorage） ============================
+const BG_PRESETS = [
+  { key: '', label: '默认' },
+  { key: 'linear-gradient(135deg,#1e3c72 0%,#2a5298 100%)', label: '深海' },
+  { key: 'linear-gradient(135deg,#0f2027 0%,#203a43 50%,#2c5364 100%)', label: '暮色' },
+  { key: 'linear-gradient(135deg,#654ea3 0%,#eaafc8 100%)', label: '霞光' },
+  { key: 'linear-gradient(135deg,#11998e 0%,#38ef7d 100%)', label: '青森' },
+  { key: 'linear-gradient(135deg,#f7971e 0%,#ffd200 100%)', label: '暖阳' },
+];
+
+function applyAppearance() {
+  const theme = localStorage.getItem('pwt-theme') || 'system';
+  const bg = localStorage.getItem('pwt-bg') || '';
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.dataset.theme = theme;
+  document.documentElement.style.setProperty('--bg-image', bg || 'none');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    const light = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+    meta.setAttribute('content', light ? '#f2f3f5' : '#0f1115');
+  }
 }
 
 // ============================ 今日 ============================
@@ -421,8 +445,21 @@ function bindSub() {
 async function renderSettings() {
   const { data: me } = await supabase.auth.getUser();
   const email = me.user?.email ?? '（未登录）';
+  const themeCur = localStorage.getItem('pwt-theme') || 'system';
   app.innerHTML = `<h2>⚙️ 设置</h2>
     <div class="card">当前账号：<b>${email}</b></div>
+    <div class="card" id="appearCard">
+      <b>外观</b>
+      <div class="subtabs" id="themeSeg" style="margin-top:10px">
+        <button data-theme-opt="system" class="${themeCur === 'system' ? 'active' : ''}">跟随系统</button>
+        <button data-theme-opt="light" class="${themeCur === 'light' ? 'active' : ''}">浅色</button>
+        <button data-theme-opt="dark" class="${themeCur === 'dark' ? 'active' : ''}">深色</button>
+      </div>
+      <div style="margin-top:12px;font-size:14px;color:var(--muted)">背景</div>
+      <div class="bg-swatches" id="bgSwatches"></div>
+      <label class="upload-btn">上传图片 <input type="file" id="bgUpload" accept="image/*" hidden></label>
+      <button id="bgReset" class="ghost-btn" style="margin-top:12px;width:100%">恢复默认背景</button>
+    </div>
     <div class="card" id="pushCard">推送订阅：加载中…</div>
     <div class="card" id="remCard">提醒开关：加载中…</div>
     <div class="card"><button id="logoutBtn">退出登录</button></div>`;
@@ -464,6 +501,56 @@ async function renderSettings() {
   }));
 
   $('#logoutBtn').onclick = async () => { await logout(); };
+  bindAppearance();
+}
+
+// 外观卡片：主题 + 背景（预设渐变 / 上传图片压缩 / 恢复默认）
+function bindAppearance() {
+  const themeSeg = $('#themeSeg');
+  if (!themeSeg) return;
+  themeSeg.querySelectorAll('[data-theme-opt]').forEach((b) => (b.onclick = () => {
+    localStorage.setItem('pwt-theme', b.dataset.themeOpt);
+    applyAppearance();
+    renderSettings();
+  }));
+
+  const bgCur = localStorage.getItem('pwt-bg') || '';
+  const sw = $('#bgSwatches');
+  sw.innerHTML = BG_PRESETS.map((p) =>
+    `<button class="bg-sw ${bgCur === p.key ? 'active' : ''}" data-bg="${p.key}"
+      style="background:${p.key || 'var(--surface-2)'};color:${p.key ? '#fff' : 'var(--text)'}">${p.label}</button>`
+  ).join('') + (bgCur.startsWith('url(')
+    ? `<button class="bg-sw active" data-bg="${bgCur}" style="background:center/cover ${bgCur};color:#fff">自定义</button>`
+    : '');
+  sw.querySelectorAll('.bg-sw').forEach((b) => (b.onclick = () => {
+    localStorage.setItem('pwt-bg', b.dataset.bg);
+    applyAppearance();
+    renderSettings();
+  }));
+
+  $('#bgUpload').onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1080;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        let data;
+        try { data = c.toDataURL('image/jpeg', 0.82); } catch (_) { data = reader.result; }
+        localStorage.setItem('pwt-bg', `url("${data}")`);
+        applyAppearance();
+        renderSettings();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  $('#bgReset').onclick = () => { localStorage.setItem('pwt-bg', ''); applyAppearance(); renderSettings(); };
 }
 
 boot();

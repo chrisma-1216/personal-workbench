@@ -1,7 +1,8 @@
 :root {
+  /* 深色（默认） */
   --bg: #0f1115;
-  --surface: #181b21;
-  --surface-2: #1f232b;
+  --surface: rgba(24,27,33,0.90);
+  --surface-2: rgba(31,35,43,0.85);
   --text: #e8eaed;
   --muted: #8b919b;
   --accent: #4a9ede;
@@ -9,13 +10,53 @@
   --bad: #ef6b52;
   --warn: #e0a545;
   --border: #2a2f38;
+  --bg-image: none;
+  color-scheme: dark;
+}
+/* 浅色主题（手动选「浅色」） */
+:root[data-theme="light"] {
+  --bg: #f2f3f5;
+  --surface: rgba(255,255,255,0.90);
+  --surface-2: rgba(238,240,243,0.85);
+  --text: #1c1f24;
+  --muted: #6b7280;
+  --accent: #2f7fb8;
+  --ok: #2e9e6b;
+  --bad: #d6452f;
+  --warn: #c8881a;
+  --border: #d8dce2;
+  color-scheme: light;
+}
+/* 跟随系统：未手动指定时按系统浅色切换 */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg: #f2f3f5;
+    --surface: rgba(255,255,255,0.90);
+    --surface-2: rgba(238,240,243,0.85);
+    --text: #1c1f24;
+    --muted: #6b7280;
+    --accent: #2f7fb8;
+    --ok: #2e9e6b;
+    --bad: #d6452f;
+    --warn: #c8881a;
+    --border: #d8dce2;
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+html, body { margin: 0; padding: 0; background-color: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 16px; }
-body { padding-bottom: 72px; }
+body {
+  padding-bottom: 72px;
+  min-height: 100vh;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
 
 #app { max-width: 640px; margin: 0 auto; padding: 16px 16px 24px; }
 h1 { font-size: 24px; margin: 8px 0 4px; }
@@ -43,9 +84,11 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 
 /* 表单 */
 label { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
-input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], select {
-  width: 100%; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
+input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], input[type="date"], input[type="time"], select {
+  width: 100%; max-width: 100%; min-width: 0; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; }
+/* iOS 下 datetime-local/date/time 有最小固有宽度，会撑破窄卡片边框；强制可收缩 */
+input[type="datetime-local"], input[type="date"], input[type="time"] { min-width: 0; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
 label.chk input { width: auto; }
@@ -107,3 +150,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   box-shadow: 0 6px 20px rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; max-width: 90%; }
 .toast.show { opacity: 1; }
 .toast.err { border-color: var(--bad); color: #ffd9d0; }
+
+/* 外观 / 背景设置 */
+.bg-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.bg-sw { width: 56px; height: 56px; border-radius: 12px; border: 2px solid var(--border);
+  color: #fff; font-size: 11px; display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 4px; text-shadow: 0 1px 2px rgba(0,0,0,.6); overflow: hidden; }
+.bg-sw.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.upload-btn { display: inline-block; margin-top: 12px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 14px; cursor: pointer; }
