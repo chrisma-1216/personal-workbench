@@ -283,7 +283,7 @@ function renderRecForm() {
         <div class="field"><label>开始</label><input type="datetime-local" id="tbStart" value="${shLocalInput(now)}"></div>
         <div class="field"><label>结束</label><input type="datetime-local" id="tbEnd" value="${shLocalInput(later)}"></div>
         <div class="field"><label>内容</label><input type="text" id="tbTitle" placeholder="一行即可，如：写 PRD"></div>
-        <div class="field chk"><label class="chk"><input type="checkbox" id="tbRemind"> 提醒我（可选）</label></div>
+        <label class="chk"><input type="checkbox" id="tbRemind"> 提醒我（可选）</label>
         <div class="field" id="tbRemindAtWrap" hidden><label>提醒时间</label><input type="datetime-local" id="tbRemindAt" value="${shLocalInput(now)}"></div>
         <button id="tbSave">保存</button>
       </div>`;
