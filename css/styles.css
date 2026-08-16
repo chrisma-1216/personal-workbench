@@ -56,6 +56,11 @@ button:active { transform: translateY(1px); }
 button:disabled { opacity: .5; }
 .card button, .actions button { background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border); padding: 8px 12px; font-size: 14px; font-weight: 500; }
+.actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.card .cmt { color: var(--muted); font-size: 13px; margin-top: 6px; font-style: italic; }
+.card button.ok-btn { background: var(--ok); color: #04231a; border-color: var(--ok); }
+.card button.bad-btn { background: var(--bad); color: #2a0d07; border-color: var(--bad); }
+.card button.ghost-btn { background: transparent; color: var(--muted); }
 
 /* 分段 / 小标签切换 */
 .seg, .subtabs { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }

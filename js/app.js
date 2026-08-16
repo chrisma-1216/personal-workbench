@@ -117,22 +117,58 @@ async function renderToday() {
     $('#tbList').innerHTML = '<p class="muted">今天还没有时间块。点「记一笔」安排一下。</p>';
   } else {
     $('#tbList').innerHTML = data
-      .map(
-        (b) => `<div class="card ${stateClass(b.status)}">
-          <div class="row"><span class="time">${fmtTime(b.start_at)}–${fmtTime(b.end_at)}</span>
-          <span class="${b.status === 'missed' ? 'bad' : ''}">${stateText(b.status)}</span></div>
-          <div class="title">${escapeHtml(b.title)}</div>
-          ${
-            b.score != null
-              ? `<div class="score">评分 ${b.score}/5</div>`
-              : `<div class="actions"><button data-score="${b.id}">打分</button></div>`
-          }
-        </div>`
-      )
+      .map((b) => {
+        const stateLine = `<div class="row"><span class="time">${fmtTime(b.start_at)}–${fmtTime(b.end_at)}</span>
+          <span class="${b.status === 'missed' ? 'bad' : b.status === 'done' ? 'ok' : ''}">${stateText(b.status)}</span></div>`;
+        const meta = b.score != null ? `<div class="score">评分 ${b.score}/5</div>` : '';
+        const comment = b.comment ? `<div class="cmt">💬 ${escapeHtml(b.comment)}</div>` : '';
+        let actions;
+        if (b.status === 'planned') {
+          actions = `<div class="actions">
+            <button class="ok-btn" data-done="${b.id}">✓ 完成</button>
+            <button class="bad-btn" data-missed="${b.id}">✗ 未完成</button>
+          </div>`;
+        } else if (b.status === 'done') {
+          actions = `<div class="actions">
+            <button class="ghost-btn" data-missed="${b.id}">↺ 标未完成</button>
+            <button data-score="${b.id}">${b.score != null ? '重评分' : '评分'}</button>
+          </div>`;
+        } else {
+          actions = `<div class="actions">
+            <button class="ghost-btn" data-done="${b.id}">↺ 标完成</button>
+            <button data-score="${b.id}">${b.score != null ? '重评分' : '评分'}</button>
+          </div>`;
+        }
+        return `<div class="card ${stateClass(b.status)}">${stateLine}<div class="title">${escapeHtml(b.title)}</div>${meta}${actions}${comment}</div>`;
+      })
       .join('');
+    $('#tbList').querySelectorAll('[data-done]').forEach((btn) => (btn.onclick = () => markDone(btn.dataset.done)));
+    $('#tbList').querySelectorAll('[data-missed]').forEach((btn) => (btn.onclick = () => markMissed(btn.dataset.missed)));
     $('#tbList').querySelectorAll('[data-score]').forEach((btn) => (btn.onclick = () => scoreBlock(btn.dataset.score)));
   }
   app.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => renderTab(b.dataset.go)));
+}
+
+async function markDone(id) {
+  const s = prompt('评分 1–5（可留空只标记完成）');
+  const patch = { status: 'done' };
+  if (s !== null) {
+    const score = s.trim() === '' ? null : parseInt(s, 10);
+    if (score !== null && (isNaN(score) || score < 1 || score > 5)) { alert('评分需 1–5'); return; }
+    patch.score = score;
+  }
+  const c = prompt('评论（可选，复盘用）') || '';
+  patch.comment = c || null;
+  const { error } = await api.updateTimeBlock(id, patch);
+  if (error) { alert('失败：' + error.message); return; }
+  renderToday();
+}
+
+async function markMissed(id) {
+  const c = prompt('未完成原因（可选，复盘用，这是最值钱的定性输入）') || '';
+  const { error } = await api.updateTimeBlock(id, { status: 'missed', comment: c || null });
+  if (error) { alert('失败：' + error.message); return; }
+  renderToday();
 }
 
 async function scoreBlock(id) {
