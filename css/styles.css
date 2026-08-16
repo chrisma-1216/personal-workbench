@@ -82,14 +82,11 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .card .score { color: var(--accent); font-size: 14px; }
 .card .big { font-size: 28px; font-weight: 600; }
 
-/* 表单 */
-label { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
+/* 表单 —— 每个 label 纵向排列（文字在上，控件在下），统一间距 */
+label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 14px; color: var(--muted); }
 input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], input[type="date"], input[type="time"], select {
-  display: block; width: 100%; max-width: 100%; min-width: 0; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
-  border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; }
-/* iOS 下 datetime-local/date/time 是 inline-block，会按固有最小宽度撑破窄卡片；
-   改成 block 独占一行 + min-width:0 强制缩到 100% 容器宽，杜绝溢出 */
-input[type="datetime-local"], input[type="date"], input[type="time"] { display: block; min-width: 0; }
+  width: 100%; max-width: 100%; min-width: 0; padding: 11px 12px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; box-sizing: border-box; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
 label.chk input { width: auto; }
