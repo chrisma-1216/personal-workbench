@@ -300,24 +300,58 @@ async function renderSummary() {
 }
 
 // ============================ 设置 ============================
+function bindSub() {
+  const btn = $('#subBtn');
+  if (!btn) return;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const old = $('#subStatus');
+    if (old) old.remove();
+    const statusEl = document.createElement('div');
+    statusEl.id = 'subStatus';
+    btn.after(statusEl);
+    statusEl.textContent = '处理中…';
+    try {
+      const { error } = await registerAndSubscribe('我的设备');
+      if (error) {
+        statusEl.className = 'err';
+        statusEl.textContent = '❌ ' + error.message;
+        btn.disabled = false;
+      } else {
+        statusEl.className = 'ok';
+        statusEl.textContent = '✅ 订阅成功，云端已确认';
+        setTimeout(renderSettings, 600);
+      }
+    } catch (e) {
+      statusEl.className = 'err';
+      statusEl.textContent = '❌ 异常：' + (e?.message || String(e));
+      btn.disabled = false;
+    }
+  };
+}
+
 async function renderSettings() {
+  const { data: me } = await supabase.auth.getUser();
+  const email = me.user?.email ?? '（未登录）';
   app.innerHTML = `<h2>⚙️ 设置</h2>
+    <div class="card">当前账号：<b>${email}</b></div>
     <div class="card" id="pushCard">推送订阅：加载中…</div>
     <div class="card" id="remCard">提醒开关：加载中…</div>
     <div class="card"><button id="logoutBtn">退出登录</button></div>`;
 
   const sub = await currentSubscription();
-  if (sub) {
-    $('#pushCard').innerHTML = `<div>推送：<b class="ok">已订阅</b> <span class="muted">（锁屏可收）</span></div><button id="unsubBtn">取消订阅</button>`;
+  const { data: subs } = await api.listSubscriptions();
+  const cloudOk = Array.isArray(subs) && subs.some((s) => sub && s.endpoint === sub.endpoint);
+
+  if (sub && cloudOk) {
+    $('#pushCard').innerHTML = `<div>推送：<b class="ok">已订阅（云端已确认）</b> <span class="muted">（锁屏可收）</span></div><button id="unsubBtn">取消订阅</button>`;
     $('#unsubBtn').onclick = async () => { await unsubscribe(); renderSettings(); };
+  } else if (sub) {
+    $('#pushCard').innerHTML = `<div>推送：<b class="warn">本地已订阅，但云端未确认</b></div><button id="subBtn">重新同步到云端</button>`;
+    bindSub();
   } else {
     $('#pushCard').innerHTML = `<div>推送：<b class="muted">未订阅</b></div><button id="subBtn">开启锁屏推送</button>`;
-    $('#subBtn').onclick = async () => {
-      $('#subBtn').disabled = true;
-      const { error } = await registerAndSubscribe('我的设备');
-      if (error) alert('订阅失败：' + error.message);
-      renderSettings();
-    };
+    bindSub();
   }
 
   const { data: rems } = await api.getReminders();

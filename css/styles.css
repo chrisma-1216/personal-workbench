@@ -23,6 +23,9 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .muted { color: var(--muted); font-size: 14px; }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
+.warn { color: var(--warn); }
+.err { color: var(--bad); font-weight: 600; margin-top: 8px; padding: 8px 10px;
+  background: rgba(239,107,82,0.12); border-radius: 10px; border: 1px solid rgba(239,107,82,0.4); }
 .hidden { display: none !important; }
 .loading { color: var(--muted); padding: 12px 0; }
 

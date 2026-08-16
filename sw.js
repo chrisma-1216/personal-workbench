@@ -64,7 +64,10 @@ self.addEventListener('push', (e) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || '/';
+  // 子路径托管（如 github.io/personal-workbench/）下，服务端给的 '/' 必须解析到 SW 作用域根，
+  // 否则点通知会跳到站点根目录而非应用内。
+  const incoming = (e.notification.data && e.notification.data.url) || '/';
+  const url = new URL(incoming, self.registration.scope).href;
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const c of clients) {
