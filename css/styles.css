@@ -72,7 +72,7 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 
 /* 卡片 */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-  padding: 14px; margin-bottom: 12px; }
+  padding: 14px; margin-bottom: 12px; overflow: hidden; }
 .card.ok { border-left: 3px solid var(--ok); }
 .card.bad { border-left: 3px solid var(--bad); }
 .card.plan { border-left: 3px solid var(--muted); }
@@ -85,10 +85,11 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 /* 表单 */
 label { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
 input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], input[type="date"], input[type="time"], select {
-  width: 100%; max-width: 100%; min-width: 0; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
+  display: block; width: 100%; max-width: 100%; min-width: 0; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; }
-/* iOS 下 datetime-local/date/time 有最小固有宽度，会撑破窄卡片边框；强制可收缩 */
-input[type="datetime-local"], input[type="date"], input[type="time"] { min-width: 0; }
+/* iOS 下 datetime-local/date/time 是 inline-block，会按固有最小宽度撑破窄卡片；
+   改成 block 独占一行 + min-width:0 强制缩到 100% 容器宽，杜绝溢出 */
+input[type="datetime-local"], input[type="date"], input[type="time"] { display: block; min-width: 0; }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
 label.chk input { width: auto; }
