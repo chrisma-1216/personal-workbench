@@ -83,9 +83,9 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .card .big { font-size: 28px; font-weight: 600; }
 
 /* 表单 —— .field 纵向弹性容器（文字标签在上，控件在下），兼容 iOS Safari */
-.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; overflow: hidden; }
 .field > label { margin-bottom: 0; font-size: 14px; color: var(--muted); }
-.field.chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+.field.chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); overflow: visible; }
 .field.chk label { color: inherit; }
 input[type="text"], input[type="number"], input[type="email"],
 input[type="datetime-local"], input[type="date"], input[type="time"],
@@ -94,13 +94,15 @@ input[type="range"], select {
   padding: 11px 12px; background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 10px;
   color: var(--text); font-size: 16px; box-sizing: border-box;
-  /* iOS Safari datetime-local 有固有最小宽度，强制收缩 */
+  /* iOS Safari datetime-local 有内部 picker 固有最小宽度，强制收缩 */
   -webkit-flex: none; flex: none;
+  /* 关键：去掉 webkit 默认外观，否则 iOS 上 datetime-local 宽度不受 width:100% 约束 */
+  -webkit-appearance: none; appearance: none;
 }
 input:focus, select:focus { outline: none; border-color: var(--accent); }
 /* checkbox / range 行保持横向 */
 label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
-label.chk input { width: auto; }
+label.chk input { width: auto; -webkit-appearance: auto; appearance: auto; }
 
 button { font-size: 16px; padding: 12px 16px; border-radius: 10px; border: none;
   background: var(--accent); color: #06223a; font-weight: 600; cursor: pointer; }
