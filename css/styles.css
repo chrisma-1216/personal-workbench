@@ -82,12 +82,23 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .card .score { color: var(--accent); font-size: 14px; }
 .card .big { font-size: 28px; font-weight: 600; }
 
-/* 表单 —— 每个 label 纵向排列（文字在上，控件在下），统一间距 */
-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; font-size: 14px; color: var(--muted); }
-input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], input[type="date"], input[type="time"], select {
-  width: 100%; max-width: 100%; min-width: 0; padding: 11px 12px; background: var(--surface-2);
-  border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; box-sizing: border-box; }
+/* 表单 —— .field 纵向弹性容器（文字标签在上，控件在下），兼容 iOS Safari */
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field > label { margin-bottom: 0; font-size: 14px; color: var(--muted); }
+.field.chk { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
+.field.chk label { color: inherit; }
+input[type="text"], input[type="number"], input[type="email"],
+input[type="datetime-local"], input[type="date"], input[type="time"],
+input[type="range"], select {
+  display: block; width: 100%; max-width: 100%; min-width: 0;
+  padding: 11px 12px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-size: 16px; box-sizing: border-box;
+  /* iOS Safari datetime-local 有固有最小宽度，强制收缩 */
+  -webkit-flex: none; flex: none;
+}
 input:focus, select:focus { outline: none; border-color: var(--accent); }
+/* checkbox / range 行保持横向 */
 label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
 label.chk input { width: auto; }
 

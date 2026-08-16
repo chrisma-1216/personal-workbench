@@ -280,11 +280,11 @@ function renderRecForm() {
     const later = new Date(now.getTime() + 3600000);
     box.innerHTML = `
       <div class="card">
-        <label>开始 <input type="datetime-local" id="tbStart" value="${shLocalInput(now)}"></label>
-        <label>结束 <input type="datetime-local" id="tbEnd" value="${shLocalInput(later)}"></label>
-        <label>内容 <input type="text" id="tbTitle" placeholder="一行即可，如：写 PRD"></label>
-        <label class="chk"><input type="checkbox" id="tbRemind"> 提醒我（可选）</label>
-        <label id="tbRemindAtWrap" hidden>提醒时间 <input type="datetime-local" id="tbRemindAt" value="${shLocalInput(now)}"></label>
+        <div class="field"><label>开始</label><input type="datetime-local" id="tbStart" value="${shLocalInput(now)}"></div>
+        <div class="field"><label>结束</label><input type="datetime-local" id="tbEnd" value="${shLocalInput(later)}"></div>
+        <div class="field"><label>内容</label><input type="text" id="tbTitle" placeholder="一行即可，如：写 PRD"></div>
+        <div class="field chk"><label class="chk"><input type="checkbox" id="tbRemind"> 提醒我（可选）</label></div>
+        <div class="field" id="tbRemindAtWrap" hidden><label>提醒时间</label><input type="datetime-local" id="tbRemindAt" value="${shLocalInput(now)}"></div>
         <button id="tbSave">保存</button>
       </div>`;
     $('#tbRemind').onchange = (e) => ($('#tbRemindAtWrap').hidden = !e.target.checked);
@@ -310,9 +310,9 @@ function renderRecForm() {
           <button data-dir="expense" class="${finDir === 'expense' ? 'active' : ''}">支出</button>
           <button data-dir="income" class="${finDir === 'income' ? 'active' : ''}">收入</button>
         </div>
-        <label>金额 <input type="number" id="txAmount" step="0.01" placeholder="0.00"></label>
-        <label>类目 <select id="txCat">${cats.map((c) => `<option value="${c[0]}">${c[1]}</option>`).join('')}</select></label>
-        <label>备注 <input type="text" id="txNote" placeholder="可选"></label>
+        <div class="field"><label>金额</label><input type="number" id="txAmount" step="0.01" placeholder="0.00"></div>
+        <div class="field"><label>类目</label><select id="txCat">${cats.map((c) => `<option value="${c[0]}">${c[1]}</option>`).join('')}</select></div>
+        <div class="field"><label>备注</label><input type="text" id="txNote" placeholder="可选"></div>
         <button id="txSave">保存</button>
       </div>`;
     box.querySelectorAll('[data-dir]').forEach((b) => (b.onclick = () => { finDir = b.dataset.dir; renderRecForm(); }));
@@ -327,8 +327,8 @@ function renderRecForm() {
   } else if (recordTab === 'weight') {
     box.innerHTML = `
       <div class="card">
-        <label>体重 (kg) <input type="number" id="wVal" step="0.1" placeholder="如 75.2"></label>
-        <label>备注 <input type="text" id="wNote" placeholder="可选"></label>
+        <div class="field"><label>体重 (kg)</label><input type="number" id="wVal" step="0.1" placeholder="如 75.2"></div>
+        <div class="field"><label>备注</label><input type="text" id="wNote" placeholder="可选"></div>
         <button id="wSave">保存</button>
       </div>`;
     $('#wSave').onclick = async () => {
@@ -340,11 +340,10 @@ function renderRecForm() {
   } else if (recordTab === 'exercise') {
     box.innerHTML = `
       <div class="card">
-        <label>方式 <input type="text" id="exType" placeholder="如 跑步 / 撸铁" value="跑步"></label>
-        <label>时长 (分钟) <input type="number" id="exDur" step="1" placeholder="如 30"></label>
-        <label>强度 <span class="slider-val" id="exIv">5</span>/10
-          <input type="range" id="exInt" min="1" max="10" value="5"></label>
-        <label>备注 <input type="text" id="exNote" placeholder="可选"></label>
+        <div class="field"><label>方式</label><input type="text" id="exType" placeholder="如 跑步 / 撸铁" value="跑步"></div>
+        <div class="field"><label>时长 (分钟)</label><input type="number" id="exDur" step="1" placeholder="如 30"></div>
+        <div class="field"><label>强度 <span class="slider-val" id="exIv">5</span>/10</label><input type="range" id="exInt" min="1" max="10" value="5"></div>
+        <div class="field"><label>备注</label><input type="text" id="exNote" placeholder="可选"></div>
         <button id="exSave">保存</button>
       </div>`;
     $('#exInt').oninput = (e) => ($('#exIv').textContent = e.target.value);
@@ -360,16 +359,15 @@ function renderRecForm() {
   } else if (recordTab === 'diet') {
     box.innerHTML = `
       <div class="card">
-        <label>餐次
+        <div class="field"><label>餐次</label>
           <select id="mSlot">
             <option value="breakfast">早餐</option>
             <option value="lunch">午餐</option>
             <option value="dinner">晚餐</option>
             <option value="snack">加餐</option>
-          </select></label>
-        <label>饱腹度 <span class="slider-val" id="mFv">8</span>/10（目标 8，超 8 即过量）
-          <input type="range" id="mFull" min="1" max="10" value="8"></label>
-        <label>备注 <input type="text" id="mNote" placeholder="可选"></label>
+          </select></div>
+        <div class="field"><label>饱腹度 <span class="slider-val" id="mFv">8</span>/10（目标 8，超 8 即过量）</label><input type="range" id="mFull" min="1" max="10" value="8"></div>
+        <div class="field"><label>备注</label><input type="text" id="mNote" placeholder="可选"></div>
         <button id="mSave">保存</button>
       </div>`;
     $('#mFull').oninput = (e) => {
