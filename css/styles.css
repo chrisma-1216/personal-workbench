@@ -1,0 +1,77 @@
+:root {
+  --bg: #0f1115;
+  --surface: #181b21;
+  --surface-2: #1f232b;
+  --text: #e8eaed;
+  --muted: #8b919b;
+  --accent: #4a9ede;
+  --ok: #4caf7d;
+  --bad: #ef6b52;
+  --warn: #e0a545;
+  --border: #2a2f38;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 16px; }
+body { padding-bottom: 72px; }
+
+#app { max-width: 640px; margin: 0 auto; padding: 16px 16px 24px; }
+h1 { font-size: 24px; margin: 8px 0 4px; }
+h2 { font-size: 20px; margin: 4px 0 14px; }
+.muted { color: var(--muted); font-size: 14px; }
+.ok { color: var(--ok); }
+.bad { color: var(--bad); }
+.hidden { display: none !important; }
+.loading { color: var(--muted); padding: 12px 0; }
+
+/* 卡片 */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px; margin-bottom: 12px; }
+.card.ok { border-left: 3px solid var(--ok); }
+.card.bad { border-left: 3px solid var(--bad); }
+.card.plan { border-left: 3px solid var(--muted); }
+.card .row { display: flex; justify-content: space-between; align-items: center; }
+.card .time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; }
+.card .title { font-size: 16px; margin: 6px 0; }
+.card .score { color: var(--accent); font-size: 14px; }
+.card .big { font-size: 28px; font-weight: 600; }
+
+/* 表单 */
+label { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
+input[type="text"], input[type="number"], input[type="email"], input[type="datetime-local"], select {
+  width: 100%; margin-top: 4px; padding: 11px 12px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; }
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+label.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
+label.chk input { width: auto; }
+
+button { font-size: 16px; padding: 12px 16px; border-radius: 10px; border: none;
+  background: var(--accent); color: #06223a; font-weight: 600; cursor: pointer; }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .5; }
+.card button, .actions button { background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); padding: 8px 12px; font-size: 14px; font-weight: 500; }
+
+/* 分段 / 小标签切换 */
+.seg, .subtabs { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.seg button, .subtabs button { flex: 1; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); padding: 10px 8px; font-weight: 500; font-size: 14px; }
+.seg button.active, .subtabs button.active { background: var(--accent); color: #06223a; border-color: var(--accent); }
+
+/* 底部导航 */
+#nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 0;
+  background: var(--surface); border-top: 1px solid var(--border); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+#nav button { flex: 1; background: transparent; color: var(--muted); border: none;
+  font-size: 13px; font-weight: 500; padding: 8px 2px; }
+#nav button.active { color: var(--accent); }
+
+/* 滑块 */
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.slider-val { color: var(--text); font-weight: 600; }
+
+/* 登录 */
+.login { text-align: center; margin-top: 18vh; }
+.login input { max-width: 320px; margin: 12px auto; }
+.login button { max-width: 320px; }

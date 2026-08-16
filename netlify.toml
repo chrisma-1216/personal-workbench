@@ -1,0 +1,15 @@
+# 个人工作台 PWA · Netlify 静态部署
+[build]
+  publish = "."
+
+# PWA 是纯客户端路由（无真实 URL 路径），刷新子路径时回退到 index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 可选：给 Service Worker / manifest 一点缓存策略（非必须）
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

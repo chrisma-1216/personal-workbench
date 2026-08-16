@@ -1,0 +1,19 @@
+{
+  "name": "个人工作台",
+  "short_name": "工作台",
+  "description": "时间安排 · 记账 · 体重 · 锻炼 · 饮食 的个人生活追踪",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
