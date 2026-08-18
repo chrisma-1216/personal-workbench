@@ -35,6 +35,9 @@ export async function listTxns(dayKey) {
 export async function createTxn({ amount, direction, category_key, note = '' }) {
   return supabase.from('txn').insert({ amount, direction, category_key, note }).select().single();
 }
+export async function deleteTxn(id) {
+  return supabase.from('txn').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+}
 
 // ============================ 体重 ============================
 export async function createWeight(value, note = '') {
@@ -43,16 +46,35 @@ export async function createWeight(value, note = '') {
 export async function listWeights(limit = 30) {
   return supabase.from('weight_log').select('*').is('deleted_at', null).order('occurred_at', { ascending: false }).limit(limit);
 }
+// 按业务日查询（明细抽屉用），倒序
+export async function listWeightsByDay(dayKey) {
+  return supabase.from('weight_log').select('*').eq('day_key', dayKey).is('deleted_at', null).order('occurred_at', { ascending: false });
+}
+export async function deleteWeight(id) {
+  return supabase.from('weight_log').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+}
 
 // ============================ 锻炼 ============================
 export async function createExercise({ type = '其他', duration_min, intensity, note = '' }) {
   return supabase.from('exercise_log').insert({ type, duration_min, intensity, note }).select().single();
+}
+export async function listExercises(dayKey) {
+  return supabase.from('exercise_log').select('*').eq('day_key', dayKey).is('deleted_at', null).order('occurred_at', { ascending: false });
+}
+export async function deleteExercise(id) {
+  return supabase.from('exercise_log').update({ deleted_at: new Date().toISOString() }).eq('id', id);
 }
 
 // ============================ 饮食 ============================
 // slot: breakfast/lunch/dinner/snack；fullness 1–10（目标 8，超 8 = 负向）
 export async function createMeal({ slot, fullness, note = '' }) {
   return supabase.from('meal_log').insert({ slot, fullness, note }).select().single();
+}
+export async function listMeals(dayKey) {
+  return supabase.from('meal_log').select('*').eq('day_key', dayKey).is('deleted_at', null).order('occurred_at', { ascending: false });
+}
+export async function deleteMeal(id) {
+  return supabase.from('meal_log').update({ deleted_at: new Date().toISOString() }).eq('id', id);
 }
 
 // ============================ 当日总结（21:00 推送同源） ============================

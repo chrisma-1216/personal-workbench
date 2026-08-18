@@ -35,6 +35,18 @@ function shLocalInput(d) {
   const p = (n) => String(n).padStart(2, '0');
   return `${sh.getFullYear()}-${p(sh.getMonth() + 1)}-${p(sh.getDate())}T${p(sh.getHours())}:${p(sh.getMinutes())}`;
 }
+// 只取 HH:MM（时间安排表单时间优先）
+function hhmm(d) {
+  const sh = new Date(d.getTime() + d.getTimezoneOffset() * 60000 + 8 * 3600000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(sh.getHours())}:${p(sh.getMinutes())}`;
+}
+// 日期 + 时间(或只时间) → UTC ISO；日期缺省用今天
+function combineDateTime(dateStr, timeStr) {
+  if (!timeStr) return null;
+  const d = dateStr || todayKey();
+  return localInputToISO(`${d}T${timeStr}`);
+}
 function stateClass(status) {
   if (status === 'done') return 'ok';
   if (status === 'missed') return 'bad';
@@ -174,16 +186,20 @@ async function renderToday() {
   const day = todayKey();
   app.innerHTML = `<h2>今日 · ${day}</h2>
     <div id="tbList" class="loading">加载中…</div>
+    <div id="modCards"></div>
     <div class="seg">
       <button data-go="record">➕ 记一笔</button>
       <button data-go="summary">🌙 收口</button>
     </div>`;
-  const { data, error } = await api.listTimeBlocks(day);
-  if (error) { $('#tbList').textContent = '加载失败：' + error.message; return; }
-  if (!data.length) {
+
+  // —— 时间块（核心，保持原样） ——
+  const { data: blocks, error } = await api.listTimeBlocks(day);
+  if (error) {
+    $('#tbList').textContent = '加载失败：' + error.message;
+  } else if (!blocks.length) {
     $('#tbList').innerHTML = '<p class="muted">今天还没有时间块。点「记一笔」安排一下。</p>';
   } else {
-    $('#tbList').innerHTML = data
+    $('#tbList').innerHTML = blocks
       .map((b) => {
         const stateLine = `<div class="row"><span class="time">${fmtTime(b.start_at)}–${fmtTime(b.end_at)}</span>
           <span class="${b.status === 'missed' ? 'bad' : b.status === 'done' ? 'ok' : ''}">${stateText(b.status)}</span></div>`;
@@ -213,7 +229,134 @@ async function renderToday() {
     $('#tbList').querySelectorAll('[data-missed]').forEach((btn) => (btn.onclick = () => markMissed(btn.dataset.missed)));
     $('#tbList').querySelectorAll('[data-score]').forEach((btn) => (btn.onclick = () => scoreBlock(btn.dataset.score)));
   }
+
+  // —— 今日记录：四张可点模块卡（恒显，空模块显「暂无记录」） ——
+  await loadModuleCards(day);
+
   app.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => renderTab(b.dataset.go)));
+}
+
+// ============================ 今日模块卡 + 明细抽屉 ============================
+const MODULE_LABEL = { finance: '记账', diet: '饮食', exercise: '锻炼', weight: '体重' };
+const CAT_LABEL = {
+  food: '餐饮', transport: '交通', shopping: '购物', housing: '居住', medical: '医疗',
+  study: '学习', fun: '娱乐', social: '人情', other_exp: '其他支出',
+  salary: '工资', bonus: '奖金', other_inc: '其他收入',
+};
+const SLOT_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' };
+
+async function loadModuleCards(day) {
+  const box = $('#modCards');
+  const [tx, ml, ex, wt] = await Promise.all([
+    api.listTxns(day), api.listMeals(day), api.listExercises(day), api.listWeightsByDay(day),
+  ]);
+  if ([tx, ml, ex, wt].some((r) => r.error)) { box.innerHTML = '<p class="muted">部分模块加载失败</p>'; return; }
+  const [txns, meals, exes, weights] = [tx.data || [], ml.data || [], ex.data || [], wt.data || []];
+  box.innerHTML = [
+    moduleCard('finance', financeAgg(txns)),
+    moduleCard('diet', dietAgg(meals)),
+    moduleCard('exercise', exAgg(exes)),
+    moduleCard('weight', weightAgg(weights)),
+  ].join('');
+  box.querySelectorAll('[data-mod]').forEach((c) => (c.onclick = () => openDetailModal(c.dataset.mod, day)));
+}
+function moduleCard(key, aggHtml) {
+  return `<div class="mod-card" data-mod="${key}">
+    <div class="mc-label">${MODULE_LABEL[key]}</div>
+    <div class="mc-val">${aggHtml}</div>
+    <div class="mc-arrow">›</div>
+  </div>`;
+}
+function financeAgg(txns) {
+  if (!txns.length) return '暂无记录';
+  let exp = 0, inc = 0;
+  for (const t of txns) (t.direction === 'income' ? (inc += t.amount) : (exp += t.amount));
+  return `支出 ¥${exp} · 收入 ¥${inc} · ${txns.length} 笔`;
+}
+function dietAgg(meals) {
+  if (!meals.length) return '暂无记录';
+  const avg = (meals.reduce((s, m) => s + m.fullness, 0) / meals.length).toFixed(1);
+  const over8 = meals.filter((m) => m.fullness > 8).length;
+  return `共 ${meals.length} 次 · 平均 ${avg} 分饱` + (over8 ? ` · <span class="bad">超8 ${over8}次⚠️</span>` : '');
+}
+function exAgg(exes) {
+  if (!exes.length) return '暂无记录';
+  const dur = exes.reduce((s, e) => s + (e.duration_min || 0), 0);
+  return `共 ${exes.length} 次 · ${dur} 分钟`;
+}
+function weightAgg(weights) {
+  if (!weights.length) return '暂无记录';
+  return `最新 ${weights[0].value}kg · ${weights.length} 次`;
+}
+
+async function openDetailModal(module, day) {
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = `
+    <div class="modal-card">
+      <div class="detail-head"><h3>${MODULE_LABEL[module]} · 明细</h3><button class="close-x" id="dClose">✕</button></div>
+      <div id="dBody" class="loading">加载中…</div>
+    </div>`;
+  document.body.appendChild(mask);
+  const close = () => mask.remove();
+  mask.querySelector('#dClose').onclick = close;
+  mask.onclick = (e) => { if (e.target === mask) close(); };
+  const body = mask.querySelector('#dBody');
+
+  async function load() {
+    const { data, error } = await fetchModuleRows(module, day);
+    if (error) { body.innerHTML = '加载失败：' + escapeHtml(error.message); return; }
+    if (!data || !data.length) { body.innerHTML = '<p class="muted">今天还没有记录。</p>'; return; }
+    body.innerHTML = data.map((r) => {
+      const { main, sub, bad } = rowContent(module, r);
+      return `<div class="detail-row">
+        <div class="d-main"><div class="${bad ? 'bad' : ''}">${main}</div><div class="d-sub">${sub}</div></div>
+        <button class="d-del" data-del="${r.id}">×</button>
+      </div>`;
+    }).join('');
+    body.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
+      const { error } = await deleteModuleRow(module, b.dataset.del);
+      if (error) { toast('删除失败：' + error.message, true); return; }
+      toast('已删除');
+      await load();
+      renderToday(); // 刷新今日卡片计数
+    }));
+  }
+  await load();
+}
+function fetchModuleRows(module, day) {
+  if (module === 'finance') return api.listTxns(day);
+  if (module === 'diet') return api.listMeals(day);
+  if (module === 'exercise') return api.listExercises(day);
+  return api.listWeightsByDay(day);
+}
+function deleteModuleRow(module, id) {
+  if (module === 'finance') return api.deleteTxn(id);
+  if (module === 'diet') return api.deleteMeal(id);
+  if (module === 'exercise') return api.deleteExercise(id);
+  return api.deleteWeight(id);
+}
+function rowContent(module, r) {
+  if (module === 'finance') {
+    const dir = r.direction === 'income' ? '收入' : '支出';
+    const main = `<span class="${r.direction === 'income' ? 'ok' : ''}">${dir} ¥${r.amount}</span>`;
+    const sub = `${CAT_LABEL[r.category_key] || r.category_key || ''}${r.note ? ' · ' + escapeHtml(r.note) : ''} · ${fmtTime(r.occurred_at)}`;
+    return { main, sub };
+  }
+  if (module === 'diet') {
+    const bad = r.fullness > 8;
+    const main = `${SLOT_LABEL[r.slot] || r.slot} · 饱腹 ${r.fullness}/10${bad ? '（过量）' : ''}`;
+    const sub = `${r.note ? escapeHtml(r.note) + ' · ' : ''}${fmtTime(r.occurred_at)}`;
+    return { main, sub, bad };
+  }
+  if (module === 'exercise') {
+    const main = `${r.type} · ${r.duration_min} 分钟`;
+    const sub = `强度 ${r.intensity}/10${r.note ? ' · ' + escapeHtml(r.note) : ''} · ${fmtTime(r.occurred_at)}`;
+    return { main, sub };
+  }
+  const main = `${r.value} kg`;
+  const sub = `${r.note ? escapeHtml(r.note) + ' · ' : ''}${fmtTime(r.occurred_at)}`;
+  return { main, sub };
 }
 
 async function markDone(id) {
@@ -280,24 +423,33 @@ function renderRecForm() {
     const later = new Date(now.getTime() + 3600000);
     box.innerHTML = `
       <div class="card">
-        <div class="field"><label>开始</label><input type="datetime-local" id="tbStart" value="${shLocalInput(now)}"></div>
-        <div class="field"><label>结束</label><input type="datetime-local" id="tbEnd" value="${shLocalInput(later)}"></div>
+        <div class="field"><label>开始时间</label><input type="time" id="tbStart" value="${hhmm(now)}"></div>
+        <div class="field"><label>结束时间</label><input type="time" id="tbEnd" value="${hhmm(later)}"></div>
         <div class="field"><label>内容</label><input type="text" id="tbTitle" placeholder="一行即可，如：写 PRD"></div>
         <label class="chk"><input type="checkbox" id="tbRemind"> 提醒我（可选）</label>
-        <div class="field" id="tbRemindAtWrap" hidden><label>提醒时间</label><input type="datetime-local" id="tbRemindAt" value="${shLocalInput(now)}"></div>
+        <div class="field" id="tbRemindAtWrap" hidden><label>提醒时间</label><input type="time" id="tbRemindAt" value="${hhmm(now)}"></div>
+        <div class="row-between"><button class="link-btn" id="tbToggleDate">改日期 ›</button></div>
+        <div class="field" id="tbDateWrap" hidden><label>日期（默认今天）</label><input type="date" id="tbDate" value="${todayKey()}"></div>
         <button id="tbSave">保存</button>
       </div>`;
     $('#tbRemind').onchange = (e) => ($('#tbRemindAtWrap').hidden = !e.target.checked);
+    $('#tbToggleDate').onclick = () => {
+      const w = $('#tbDateWrap');
+      w.hidden = !w.hidden;
+      $('#tbToggleDate').textContent = w.hidden ? '改日期 ›' : '收起日期';
+    };
     $('#tbSave').onclick = async () => {
       const title = $('#tbTitle').value.trim();
-      if (!title || !$('#tbStart').value || !$('#tbEnd').value) { toast('请填起止时间和内容', true); return; }
+      const startT = $('#tbStart').value, endT = $('#tbEnd').value;
+      if (!title || !startT || !endT) { toast('请填起止时间和内容', true); return; }
+      const dateStr = $('#tbDateWrap').hidden ? todayKey() : $('#tbDate').value;
       const remind_enabled = $('#tbRemind').checked;
       const { error } = await api.createTimeBlock({
-        start_at: localInputToISO($('#tbStart').value),
-        end_at: localInputToISO($('#tbEnd').value),
+        start_at: combineDateTime(dateStr, startT),
+        end_at: combineDateTime(dateStr, endT),
         title,
         remind_enabled,
-        remind_at: remind_enabled ? localInputToISO($('#tbRemindAt').value) : null,
+        remind_at: remind_enabled ? combineDateTime(dateStr, $('#tbRemindAt').value) : null,
       });
       if (error) toast('保存失败：' + error.message, true); else { toast('已保存'); renderRecord(); }
     };
@@ -388,8 +540,8 @@ async function renderSummary() {
   app.innerHTML = `<h2>🌙 今日收口</h2><div id="sum" class="loading">加载中…</div>`;
   const { data, error } = await api.getDailySummary();
   if (error) { $('#sum').textContent = '加载失败：' + error.message; return; }
-  if (!data || data.should_push === false) {
-    $('#sum').innerHTML = '<p class="muted">今天还没有时间块安排，无从对账。去「记一笔」安排一下吧。</p>';
+  if (!data) {
+    $('#sum').innerHTML = '<p class="muted">今天还没有任何记录。去「记一笔」记一笔吧。</p>';
     return;
   }
   const b = data.blocks || {};

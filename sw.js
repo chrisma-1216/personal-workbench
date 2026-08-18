@@ -1,6 +1,6 @@
 // 个人工作台 Service Worker
 // 职责：离线缓存壳 + 接收 Web Push 并展示（iOS 忽略 actions，正文必须自解释）+ 点击打开。
-const CACHE = 'pwt-v4';
+const CACHE = 'pwt-v5';
 const ASSETS = [
   './',
   './index.html',

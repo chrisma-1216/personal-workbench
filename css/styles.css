@@ -70,6 +70,29 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .hidden { display: none !important; }
 .loading { color: var(--muted); padding: 12px 0; }
 
+/* 今日模块卡（可下钻看明细） */
+.mod-card { display: flex; align-items: center; gap: 10px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; }
+.mod-card:active { transform: scale(.99); }
+.mc-label { font-size: 14px; color: var(--muted); width: 42px; flex: none; }
+.mc-val { flex: 1; min-width: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-arrow { color: var(--muted); font-size: 20px; flex: none; }
+
+/* 明细抽屉行 */
+.detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.detail-head h3 { margin: 0; font-size: 17px; }
+.detail-head .close-x { background: transparent; color: var(--muted); border: none; font-size: 20px; padding: 4px 8px; flex: none; }
+.detail-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-row .d-main { flex: 1; min-width: 0; }
+.detail-row .d-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.detail-row .d-del { background: transparent; color: var(--bad); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px; font-size: 16px; flex: none; }
+
+/* 表单小工具：靠后、可折叠的日期行 */
+.row-between { display: flex; justify-content: space-between; align-items: center; margin: 2px 0 4px; }
+.link-btn { background: transparent; color: var(--muted); border: none; padding: 4px 0; font-size: 14px; flex: none; }
+
 /* 卡片 */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px; margin-bottom: 12px; overflow: hidden; }
