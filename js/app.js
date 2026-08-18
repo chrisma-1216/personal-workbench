@@ -186,7 +186,6 @@ async function renderToday() {
   const day = todayKey();
   app.innerHTML = `<h2>今日 · ${day}</h2>
     <div id="tbList" class="loading">加载中…</div>
-    <div id="modCards"></div>
     <div class="seg">
       <button data-go="record">➕ 记一笔</button>
       <button data-go="summary">🌙 收口</button>
@@ -230,13 +229,10 @@ async function renderToday() {
     $('#tbList').querySelectorAll('[data-score]').forEach((btn) => (btn.onclick = () => scoreBlock(btn.dataset.score)));
   }
 
-  // —— 今日记录：四张可点模块卡（恒显，空模块显「暂无记录」） ——
-  await loadModuleCards(day);
-
   app.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => renderTab(b.dataset.go)));
 }
 
-// ============================ 今日模块卡 + 明细抽屉 ============================
+// ============================ 明细抽屉（点模块看当日明细，收口 tab 调用） ============================
 const MODULE_LABEL = { finance: '记账', diet: '饮食', exercise: '锻炼', weight: '体重' };
 const CAT_LABEL = {
   food: '餐饮', transport: '交通', shopping: '购物', housing: '居住', medical: '医疗',
@@ -244,50 +240,6 @@ const CAT_LABEL = {
   salary: '工资', bonus: '奖金', other_inc: '其他收入',
 };
 const SLOT_LABEL = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' };
-
-async function loadModuleCards(day) {
-  const box = $('#modCards');
-  const [tx, ml, ex, wt] = await Promise.all([
-    api.listTxns(day), api.listMeals(day), api.listExercises(day), api.listWeightsByDay(day),
-  ]);
-  if ([tx, ml, ex, wt].some((r) => r.error)) { box.innerHTML = '<p class="muted">部分模块加载失败</p>'; return; }
-  const [txns, meals, exes, weights] = [tx.data || [], ml.data || [], ex.data || [], wt.data || []];
-  box.innerHTML = [
-    moduleCard('finance', financeAgg(txns)),
-    moduleCard('diet', dietAgg(meals)),
-    moduleCard('exercise', exAgg(exes)),
-    moduleCard('weight', weightAgg(weights)),
-  ].join('');
-  box.querySelectorAll('[data-mod]').forEach((c) => (c.onclick = () => openDetailModal(c.dataset.mod, day)));
-}
-function moduleCard(key, aggHtml) {
-  return `<div class="mod-card" data-mod="${key}">
-    <div class="mc-label">${MODULE_LABEL[key]}</div>
-    <div class="mc-val">${aggHtml}</div>
-    <div class="mc-arrow">›</div>
-  </div>`;
-}
-function financeAgg(txns) {
-  if (!txns.length) return '暂无记录';
-  let exp = 0, inc = 0;
-  for (const t of txns) (t.direction === 'income' ? (inc += t.amount) : (exp += t.amount));
-  return `支出 ¥${exp} · 收入 ¥${inc} · ${txns.length} 笔`;
-}
-function dietAgg(meals) {
-  if (!meals.length) return '暂无记录';
-  const avg = (meals.reduce((s, m) => s + m.fullness, 0) / meals.length).toFixed(1);
-  const over8 = meals.filter((m) => m.fullness > 8).length;
-  return `共 ${meals.length} 次 · 平均 ${avg} 分饱` + (over8 ? ` · <span class="bad">超8 ${over8}次⚠️</span>` : '');
-}
-function exAgg(exes) {
-  if (!exes.length) return '暂无记录';
-  const dur = exes.reduce((s, e) => s + (e.duration_min || 0), 0);
-  return `共 ${exes.length} 次 · ${dur} 分钟`;
-}
-function weightAgg(weights) {
-  if (!weights.length) return '暂无记录';
-  return `最新 ${weights[0].value}kg · ${weights.length} 次`;
-}
 
 async function openDetailModal(module, day) {
   const mask = document.createElement('div');
@@ -319,7 +271,7 @@ async function openDetailModal(module, day) {
       if (error) { toast('删除失败：' + error.message, true); return; }
       toast('已删除');
       await load();
-      renderToday(); // 刷新今日卡片计数
+      renderTab(activeTab); // 刷新当前 tab（收口/今日均可）
     }));
   }
   await load();
@@ -537,6 +489,7 @@ function renderRecForm() {
 
 // ============================ 收口（21:00 总结） ============================
 async function renderSummary() {
+  const day = todayKey();
   app.innerHTML = `<h2>🌙 今日收口</h2><div id="sum" class="loading">加载中…</div>`;
   const { data, error } = await api.getDailySummary();
   if (error) { $('#sum').textContent = '加载失败：' + error.message; return; }
@@ -547,6 +500,9 @@ async function renderSummary() {
   const b = data.blocks || {};
   const diet = data.diet || {};
   const fin = data.finance || {};
+  const ex = data.exercise || {};
+  const { data: weights } = await api.listWeightsByDay(day);
+  const weightVal = weights && weights.length ? `最新 ${weights[0].value}kg · ${weights.length} 次` : '暂无记录';
   $('#sum').innerHTML = `
     <div class="card ok"><div class="big">${b.done ?? 0}/${b.total ?? 0} 完成</div>
       ${b.score_avg != null ? `<div>平均评分 ${b.score_avg}</div>` : ''}
@@ -555,10 +511,12 @@ async function renderSummary() {
     ${data.missed_list?.length ? `<div class="card bad"><b>未完成</b>${data.missed_list.map((m) => `<div>• ${escapeHtml(m.title)}（${m.start}）</div>`).join('')}</div>` : ''}
     ${data.unscored_list?.length ? `<div class="card"><b>待打分</b>${data.unscored_list.map((m) => `<div>• ${escapeHtml(m.title)}（${m.start}）<button data-score="${m.id}">打分</button></div>`).join('')}</div>` : ''}
     ${(diet.over8_count ?? 0) > 0 ? `<div class="card bad">⚠️ 超 8 分饱 ${diet.over8_count} 次（吃过量，负向）</div>` : ''}
-    ${(fin.count ?? 0) > 0 ? `<div class="card">今日记账：支出 ¥${fin.expense ?? 0}，收入 ¥${fin.income ?? 0}，${fin.count} 笔</div>` : ''}
-    ${diet.count ? `<div class="card">饮食 ${diet.count} 次，平均饱腹 ${diet.fullness_avg ?? '-'}</div>` : ''}
-    ${data.exercise?.count ? `<div class="card">锻炼 ${data.exercise.count} 次，共 ${Math.round(data.exercise.duration_min ?? 0)} 分钟</div>` : ''}`;
+    ${(fin.count ?? 0) > 0 ? `<div class="card detailable" data-detail="finance">今日记账：支出 ¥${fin.expense ?? 0}，收入 ¥${fin.income ?? 0}，${fin.count} 笔 <span class="mc-arrow">›</span></div>` : ''}
+    ${diet.count ? `<div class="card detailable" data-detail="diet">饮食 ${diet.count} 次，平均饱腹 ${diet.fullness_avg ?? '-'} <span class="mc-arrow">›</span></div>` : ''}
+    ${ex?.count ? `<div class="card detailable" data-detail="exercise">锻炼 ${ex.count} 次，共 ${Math.round(ex.duration_min ?? 0)} 分钟 <span class="mc-arrow">›</span></div>` : ''}
+    <div class="card detailable" data-detail="weight">体重 · ${weightVal} <span class="mc-arrow">›</span></div>`;
   $('#sum').querySelectorAll('[data-score]').forEach((btn) => (btn.onclick = () => scoreBlock(btn.dataset.score)));
+  $('#sum').querySelectorAll('[data-detail]').forEach((c) => (c.onclick = () => openDetailModal(c.dataset.detail, day)));
 }
 
 // ============================ 设置 ============================

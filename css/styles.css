@@ -104,6 +104,10 @@ h2 { font-size: 20px; margin: 4px 0 14px; }
 .card .title { font-size: 16px; margin: 6px 0; }
 .card .score { color: var(--accent); font-size: 14px; }
 .card .big { font-size: 28px; font-weight: 600; }
+/* 收口 tab 中可点开看明细的模块卡 */
+.card.detailable { cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card.detailable:active { background: var(--surface-2, #e9edf2); }
+.card.detailable .mc-arrow { margin-left: auto; color: var(--muted); font-size: 20px; flex: none; }
 
 /* 表单 —— .field 纵向弹性容器（文字标签在上，控件在下），兼容 iOS Safari */
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; overflow: hidden; }
